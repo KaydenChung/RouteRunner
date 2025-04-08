@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RouteRunner</title>
+    <link rel="icon" type="image/png" href="../static/icon.png">
+    <link rel="stylesheet" href="../static/indexStyles.css">
+
+</head>
+
+<body>
+
+  <h1>Route distances from: {{ start }}</h1>
+  <ul>
+    {% for r in results %}
+      <li>{{ r.address }} — {{ r.distance_km }} km, {{ r.duration_min }} min</li>
+    {% endfor %}
+  </ul>
+  <a href="/">Go back</a>
+
+</body>
+</html>

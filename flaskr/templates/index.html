@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RouteRunner</title>
+  <link rel="icon" type="image/png" href="../static/icon.png">
+  <link rel="stylesheet" href="../static/indexStyles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+</head>
+
+<body>
+
+  <main class="min-h-screen bg-gray-50">
+    <div class="container">
+
+      <!-- Header -->
+      <div class="header">
+        <i class="fas fa-truck" style="color: #059669; font-size: 30px;"></i>
+        <h1 class="title">RouteRunner</h1>
+      </div>
+
+      <!-- Card -->
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">Optimize Your Recycling Pickup Routes</h2>
+        </div>
+        <form action="/process" method="POST" enctype="multipart/form-data" id="routeForm">
+          <div class="card-content">
+
+            <!-- Starting Address -->
+            <label for="startingAddress" class="label">Starting Address</label>
+            <div class="input-icon">
+              <i class="fa-solid fa-location-dot" style="color: grey; font-size: 25px; padding-bottom: 5px;"></i>
+              <input type="text" name="startingAddress" id="startingAddress" placeholder="Enter your starting location" required />
+            </div>
+
+            <!-- Toggle Button -->
+            <button type="button" id="toggleInput" class="toggle-btn">Switch to Manual Address Input</button>
+
+            <!-- File Upload -->
+            <div id="fileUploadContainer">
+              <label for="fileUpload" class="label">Upload CSV File of Addresses</label>
+              <div class="dropbox" onclick="document.getElementById('fileUpload').click();">
+                <div id="uploadPrompt">
+                  <i class="fas fa-upload" style="color: grey; font-size: 30px;"></i>
+                  <p>Drag and drop your CSV file here or click to browse</p>
+                  <p class="hint">Accepts .CSV files</p>
+                </div>
+                <input type="file" name="file" id="fileUpload" accept=".csv" hidden required />
+                <p id="fileName" class="hint" style="margin-top: 10px;"></p>
+              </div>              
+            </div>
+
+            <!-- Manual Address Input -->
+            <div id="manualInputContainer" style="display: none;">
+              <label for="manualAddresses" class="label">Enter Addresses (one per line)</label>
+              <textarea name="manualAddresses" id="manualAddresses" placeholder="123 Main St, Toronto, ON&#10;456 King St W, Toronto, ON&#10;789 Queen St E, Toronto, ON"></textarea>
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit" class="submit-btn">Map Routes</button>
+          </div>
+
+        </form>
+
+        <!-- Loading Animation -->
+        <div id="loadingOverlay">
+          <div class="loading-content">
+            <i class="fas fa-spinner fa-spin fa-3x"></i>
+            <p>Optimizing routes, please wait...</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <script>
+
+    // Toggle Between File Upload and Manual Input
+    const toggleBtn = document.getElementById('toggleInput');
+    const fileUpload = document.getElementById('fileUploadContainer');
+    const manualInput = document.getElementById('manualInputContainer');
+    const fileInput = document.getElementById('fileUpload');
+    toggleBtn.addEventListener('click', () => {
+      const isManual = manualInput.style.display === 'block';
+      manualInput.style.display = isManual ? 'none' : 'block';
+      fileUpload.style.display = isManual ? 'block' : 'none';
+      fileInput.required = isManual;
+      toggleBtn.textContent = isManual ? 'Switch to Manual Address Input' : 'Switch to File Upload';
+    });
+
+    // File Upload Display
+    const fileNameDisplay = document.getElementById("fileName");
+    const uploadPrompt = document.getElementById("uploadPrompt");
+    fileInput.addEventListener("change", function () {
+      if (fileInput.files.length > 0) {
+        fileNameDisplay.innerHTML = `<i class="fas fa-check-circle" style="color: #059669; margin-right: 6px;"></i> Selected file: ${fileInput.files[0].name}`;
+        uploadPrompt.style.display = "none";
+      } else {
+        fileNameDisplay.textContent = "";
+        uploadPrompt.style.display = "block";
+      }
+    });
+
+    // Show Loading Animation on Form Submit
+    document.getElementById('routeForm').addEventListener('submit', function () {
+      document.getElementById('loadingOverlay').style.display = 'flex';
+    });
+
+  </script>
+  
+</body>
+</html>
