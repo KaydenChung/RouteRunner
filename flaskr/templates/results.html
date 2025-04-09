@@ -2,23 +2,104 @@
 <html lang="en">
 <head>
 
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RouteRunner</title>
-    <link rel="icon" type="image/png" href="../static/icon.png">
-    <link rel="stylesheet" href="../static/indexStyles.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RouteRunner</title>
+  <link rel="icon" type="image/png" href="../static/icon.png">
+  <link rel="stylesheet" href="../static/indexStyles.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 2rem;
+      background-color: #f9fafb;
+    }
+    h1 {
+      color: #059669;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 2rem;
+    }
+    th, td {
+      padding: 10px;
+      border-bottom: 1px solid #ddd;
+      text-align: left;
+    }
+    #map {
+      height: 500px;
+      margin-top: 2rem;
+      border-radius: 10px;
+    }
+  </style>
 
 </head>
 
 <body>
 
-  <h1>Route distances from: {{ start }}</h1>
-  <ul>
+  <a class="back" href="/" style="position: absolute; top: 20px; left: 20px;">← Back to Homepage</a>
+
+  <h1>Routes from: {{ start }}</h1>
+
+  <table>
+    <tr>
+      <th>#</th>
+      <th>Address</th>
+      <th>Distance (km)</th>
+      <th>Duration (min)</th>
+    </tr>
     {% for r in results %}
-      <li>{{ r.address }} — {{ r.distance_km }} km, {{ r.duration_min }} min</li>
+    <tr>
+      <td>{{ loop.index }}</td>
+      <td>{{ r.address }}</td>
+      <td>{{ r.distance_km }}</td>
+      <td>{{ r.duration_min }}</td>
+    </tr>
     {% endfor %}
-  </ul>
-  <a href="/">Go back</a>
+  </table>
+
+  <h2>Interactive Route Map</h2>
+  <div id="map"></div>
+
+  <script id="location-data" type="application/json">
+    {{ mapPoints | tojson }}
+  </script>
+  
+  <script>
+    const mapData = JSON.parse(document.getElementById('location-data').textContent);
+    const bounds = [];
+  
+    // Create the map (we'll fit bounds after adding markers)
+    const map = L.map('map');
+  
+    // Tile layer
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18,
+    }).addTo(map);
+  
+    // Add start location
+    const startLat = {{ startLat }};
+    const startLng = {{ startLng }};
+    const startMarker = L.marker([startLat, startLng])
+      .addTo(map)
+      .bindPopup("Start Location")
+      .openPopup();
+  
+    bounds.push([startLat, startLng]);
+  
+    // Add destination pins
+    mapData.forEach((loc, i) => {
+      L.marker([loc.lat, loc.lng])
+        .addTo(map)
+        .bindPopup(`${i + 1}. ${loc.label}`);
+      bounds.push([loc.lat, loc.lng]);
+    });
+  
+    // Fit map to all markers
+    map.fitBounds(bounds, { padding: [50, 50] });
+  </script>  
 
 </body>
 </html>

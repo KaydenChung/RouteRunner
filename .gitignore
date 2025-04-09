@@ -2,3 +2,5 @@
 .DS_Store
 __pycache__/
 *.pyc
+flaskr/static/scatter.png
+flaskr/uploads/
