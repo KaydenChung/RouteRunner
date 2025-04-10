@@ -2,6 +2,9 @@ from flask import Flask, render_template, request
 import pandas as pd
 import os
 import openrouteservice
+from sklearn.cluster import KMeans
+import numpy as np
+from collections import defaultdict
 
 # ORS API key
 ORS_API_KEY = '5b3ce3597851110001cf62483c004eed382a4711a74d2f6ff1e07701'
@@ -46,68 +49,75 @@ def process():
         return "Could not geocode starting address.", 400
     startLng, startLat = startCoords
 
-    mapPoints = []
-    results = []
+    rawPoints = []
 
-    # 🟩 Manual input case
+    # 🟩 Manual input
     if manualInput and not file:
         addresses = [line.strip() for line in manualInput.split('\n') if line.strip()]
         for addr in addresses:
             coords = geocodeAddress(addr)
             if coords:
                 lng, lat = coords
-                distance, duration = getRouteInfo([startLng, startLat], [lng, lat])
-
-                results.append({
-                    'address': addr,
-                    'distance_km': round(distance / 1000, 2),
-                    'duration_min': round(duration / 60, 1)
-                })
-
-                mapPoints.append({'lat': lat, 'lng': lng, 'label': addr})
-            else:
-                print(f"Could not geocode address: {addr}")
-
-    # 🟩 CSV input case
+                rawPoints.append({'lat': lat, 'lng': lng, 'label': addr})
+    # 🟩 CSV input
     elif file and file.filename.endswith('.csv'):
         filePath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
         file.save(filePath)
-
         try:
             df = pd.read_csv(filePath)
             requiredCols = {'Address', 'City', 'Observed Latitude', 'Observed Longitude'}
             if not requiredCols.issubset(df.columns):
                 return "CSV must contain 'Address', 'City', 'Observed Latitude', and 'Observed Longitude' columns.", 400
-
             df = df.dropna(subset=['Observed Latitude', 'Observed Longitude'])
             df['fullAddress'] = df['Address'].astype(str) + ", " + df['City'].astype(str)
-            df['lat'] = df['Observed Latitude']
-            df['lng'] = df['Observed Longitude']
-
             for _, row in df.iterrows():
-                lat, lng = row['lat'], row['lng']
+                lat, lng = row['Observed Latitude'], row['Observed Longitude']
                 label = row['fullAddress']
-
-                distance, duration = getRouteInfo([startLng, startLat], [lng, lat])
-
-                results.append({
-                    'address': label,
-                    'distance_km': round(distance / 1000, 2),
-                    'duration_min': round(duration / 60, 1)
-                })
-
-                mapPoints.append({'lat': lat, 'lng': lng, 'label': label})
-
+                rawPoints.append({'lat': lat, 'lng': lng, 'label': label})
         except Exception as e:
             return f"Error processing CSV file: {str(e)}", 500
-
     else:
         return "Please either upload a valid CSV file or enter manual addresses.", 400
 
-    # Render the map results
+    # Apply K-means clustering
+    coordsArray = np.array([[p['lat'], p['lng']] for p in rawPoints])
+    kmeans = KMeans(n_clusters=4, random_state=42).fit(coordsArray)
+
+    clusteredRoutes = defaultdict(lambda: {
+        'points': [],
+        'total_distance_km': 0,
+        'total_duration_min': 0
+    })
+
+    for i, point in enumerate(rawPoints):
+        clusterId = kmeans.labels_[i]
+        lat, lng = point['lat'], point['lng']
+        label = point['label']
+        distance, duration = getRouteInfo([startLng, startLat], [lng, lat])
+        clusteredRoutes[clusterId]['points'].append({
+            'lat': lat,
+            'lng': lng,
+            'label': label,
+            'distance_km': round(distance / 1000, 2),
+            'duration_min': round(duration / 60, 1)
+        })
+        clusteredRoutes[clusterId]['total_distance_km'] += distance / 1000
+        clusteredRoutes[clusterId]['total_duration_min'] += duration / 60
+
+    driverRoutes = []
+    mapPoints = []
+    for clusterId, route in clusteredRoutes.items():
+        driverRoutes.append({
+            'driver': f"Driver {clusterId + 1}",
+            'points': route['points'],
+            'total_distance_km': round(route['total_distance_km'], 2),
+            'total_duration_min': round(route['total_duration_min'], 1)
+        })
+        mapPoints.extend([{**p, 'driver': int(clusterId + 1)} for p in route['points']])
+
     return render_template('results.html',
                            start=startAddress,
-                           results=results,
+                           driverRoutes=driverRoutes,
                            mapPoints=mapPoints,
                            startLat=startLat,
                            startLng=startLng)
